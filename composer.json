@@ -1,0 +1,15 @@
+{
+    "require": {
+        "ext-pdo": "*",
+        "ext-fileinfo": "*",
+        "ext-mbstring": "*",
+        "ext-ctype": "*",
+        "ext-openssl": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Requete\\": "Requete/",
+            "Requete\\Core\\": "Requete/Core/",
+            "answers\\": "answers/"
+        }
+    }}

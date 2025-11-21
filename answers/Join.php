@@ -3,176 +3,109 @@
 namespace answers;
 
 use Exception;
-use Requete\Core\base;
+use Requete\Core\EntityRepository;
 
 class Join
 {
-    /***
-     * @var string Table à join
-     */
-    private string $table_to;
-    private base $class_to;
-    /***
-     * @var string Table depuis laquel rejoindre
-     */
-    private string $table_from;
-    private base $class_from;
-    /***
-     * @var string[] Liste des champs devant être récupéré
-     */
-    private array $fields;
-    /***
-     * @var string  champ d'id servant à faire la jointure
-     */
-    private string $id_field;
+    private EntityRepository $entityFrom;
+    private EntityRepository $entityTo;
 
-    public function getTableTo(): string
+    //region getter and Setter
+    public function getEntityFrom(): string
     {
-        return $this->table_to;
+        return $this->entityFrom::getName();
     }
 
-    public function getIdField(): string
+    public function setEntityFrom(string $entity): void
     {
-        return $this->id_field;
+        if (!$this->hasEntityTo())
+            throw new Exception("La table à rejoindre n'a pas été renseigné.");
+
+        if (EntityRepository::doEntityExist($entity)) {
+            if($this->entityTo::isLinked($entity)) {
+                $entityRepository = $entity . "Repository";
+                $this->entityFrom = new $entityRepository();
+            } else
+                throw new Exception("La table " . $entity . " n'est pas liée à la table " . $this->getEntityTo() . ".");
+        } else {
+            throw new Exception("La table $entity n'existe pas.");
+        }
     }
 
-    public function getTableFrom(): string
+    public function getEntityTo(): string
     {
-        return $this->table_from;
+        return $this->entityTo::getName();
     }
 
-    public function setTableTo(string $table):bool{
-        if(!empty($this->table_to)){
-            unset($this->table_to);
-            unset($this->table_from);
-            unset($this->fields);
-            unset($this->id_field);
-        }
-        try{
-            if(base::tableExist('"' . $table . '"')){
-                throw new Exception("La table '$table' n'existe pas");
-            }
-            $classname = "Requete\\" . $table . "Repository";
-            $this->class_to = new $classname();
-            $this->table_to = $table;
-            return true;
-        }catch (Exception $e){
-            echo $e->getMessage();
-        }
-        return false;
-    }
-
-    protected function tableToSet():void{
-        if (empty($this->table_to)) {
-            throw new Exception("La table à joindre n'a pas été définie");
-        }
-    }
-
-    public function setIdField(string $id_field):bool{
-        try {
-            $this->tableToSet();
-
-            if (!$this->class_to->inFields($id_field)) {
-                throw new Exception("Le champ '$id_field' n'existe pas dans la table à joindre");
-            }
-
-            if(!empty($this->class_from) && !$this->class_from->inFields($id_field)) {
-                throw new Exception("Le champ '$id_field' n'existe pas dans la table depuis laquel rejoindre");
-            }
-
-            $this->id_field = $id_field;
-            return true;
-
-        }catch (Exception $e){
-            echo $e->getMessage();
-        }
-        return false;
-    }
-
-    public function setTableFrom(string $table):bool{
-        try{
-            $this->tableToSet();
-            if(!base::tableExist($table)){
-                throw new Exception("La table '$table' n'existe pas");
-            }
-            if (!$this->class_to->inTableLink($table)) {
-                throw new Exception("Cette table n'est pas lié à la table à joindre");
-            }
-
-            $classname = "Requete\\" . $table . "Repository";
-            $this->class_from = new $classname();
-
-            if (!empty($this->id_field) && !$this->class_from->inFields($this->id_field)) {
-                unset($this->class_from);
-                throw new Exception("Le champ '$this->id_field' n'est pas présent dans cette table");
-            }
-
-            $this->table_from = $table;
-            return true;
-
-        }catch (Exception $e){
-            echo $e->getMessage();
-        }
-        return false;
-    }
-
-    private function verifyFields(string $field):void{
-        if(!$this->class_to->inFields($field)){
-            throw new Exception("Le champ " . $field ." n'existe pas dans la table à joindre");
-        }
-
-        if (!empty($this->fields) && in_array($field, $this->fields)) {
-            throw new Exception("Le champ " .  $field . " existe déja dans les fields");
-        }
-
-        $this->fields[] = $field;
-    }
-
-    public function addInFields(array|string $fields):bool
+    public function setEntityTo(string $entity): void
     {
-        try {
-            $this->tableToSet();
+        $this->reset();
+        if (EntityRepository::doEntityExist($entity)) {
+            $entityRepository = $entity . "Repository";
+            $this->entityTo = new $entityRepository();
+        } else {
+            throw new Exception("La table $entity n'existe pas.");
+        }
+    }
+    //endregion
 
-            if (is_array($fields)) {
-                foreach ($fields as $field) {
-                    if(is_string($field)) {
-                        $this->verifyFields($field);
-                    }
+    private function hasEntityFrom():bool {
+        return !empty($this->entityFrom);
+    }
+
+    private function hasEntityTo():bool {
+        return !empty($this->entityTo);
+    }
+
+    public function getQuery(array &$entityAvailable):string {
+        if (!$this->hasEntityTo())
+            throw new Exception("La table à rejoindre n'a pas été renseigné.");
+
+        if ($this->hasEntityFrom()) {
+            $valid = true;
+            foreach ($entityAvailable as $entity) {
+                if ($entity()::getName() == $this->getEntityFrom()) {
+                    $valid = false;
+                    break;
                 }
             }
-            else{
-                $this->verifyFields($fields);
+
+            if (!$valid)
+                throw new Exception("La table de départ n'est pas disponible.");
+        }
+
+        if (!$this->hasEntityFrom()) {
+            foreach ($entityAvailable as $entity) {
+                if ($entity()::isLinked($this->getEntityTo())) {
+                    $this->setEntityFrom($entity::getName());
+                    break;
+                }
             }
-
-
-            return true;
-
-        } catch (Exception $e) {
-            echo $e->getMessage();
         }
-        return false;
+
+        if (!$this->hasEntityFrom())
+            throw new Exception("La table " . $this->getEntityTo() . " est injoignable.");
+
+        $entityAvailable[] = $this->getEntityTo();
+
+        $field1 = $this->entityFrom::getLink($this->getEntityTo());
+        $field2 = $this->entityTo::getLink($this->getEntityFrom());
+
+        if ($field1[array_key_first($field1)] == null)
+            $field1[array_key_first($field1)] = "id";
+        if ($field2[array_key_first($field2)] == null)
+            $field2[array_key_first($field2)] = "id";
+
+        return  "INNER JOIN " . $this->getEntityTo()
+                . " ON " . array_key_first($field1) . "." . $field1[array_key_first($field1)]
+                . " = "
+                . array_key_first($field2) . "." . $field2[array_key_first($field2)];
     }
 
-    public function getFields():array{
-        if(empty($this->fields)){
-            return [];
-        }
-        return $this->fields;
-    }
-
-    public function ready2Use():bool{
-        if (empty($this->id_field)) {
-            return false;
-        }
-        return true;
-    }
-
-    /***
-     * @return bool
-     * retourne un true si la variable tablefrom a été initialisé
-     */
-    public function tableFromSet():bool{
-        return !empty($this->table_from);
+    public function reset(): void
+    {
+        unset($this->entityFrom);
+        unset($this->entityTo);
     }
 
 }

@@ -2,158 +2,153 @@
 
 namespace answers;
 
-use Requete\Core\base;
+use Exception;
+use Requete\Core\EntityRepository;
 
 class Where
 {
-    private string $table;
-    private base $class;
-    private string $wherefield;
-    private mixed $wherevalue;
-    private bool $different = false;
-    private bool $list = false;
+    private EntityRepository $entity;
+    private string $field;
+    private mixed $value;
+    private bool $equal = true;
+    private bool $list;
     private bool $like = false;
-    private string $salt = "";
+    private string $salt;
 
-    /**
-     * @param string $table
-     * @return bool
-     */
-    public function setTable(string $table): bool
+    public function __construct()
     {
-        if(!empty($this->table)){
-            unset($this->table);
-            unset($this->class);
-            unset($this->wherefield);
-            unset($this->wherevalue);
-        }
-        if(base::tableExist($table)){
-            $this->table = $table;
-            $classname = "Requete\\" . $table ."Repository";
-            $this->class = new $classname();
+        $this->salt = bin2hex(random_bytes(16));
+    }
+
+    private function hasEntity(): bool
+    {
+        return !empty($this->entity);
+    }
+
+    private function ready2Use(): bool{
+        if(!empty($this->value) && !empty($this->field)){
             return true;
         }
         return false;
     }
 
-    public function getTable(): string
+    public function setEntity(string $entity): void
     {
-        return $this->table;
+        $this->reset();
+        if (EntityRepository::doEntityExist($entity)) {
+            $entityRepository = $entity . "Repository";
+            $this->entity = new $entityRepository();
+        } else {
+            throw new Exception("La table $entity n'existe pas.");
+        }
     }
 
-    /**
-     * @param mixed $wherevalue
-     */
-    public function setWherevalue(mixed $wherevalue): void
+    public function getEntity(): string
     {
-        if(is_array($wherevalue)){
+        return $this->entity::getName();
+    }
+
+    public function getField(): string
+    {
+        return $this->field;
+    }
+
+    public function setField(string $field): void
+    {
+        if($this->hasEntity())
+            throw new Exception("La table n'a pas été défini.");
+
+        if($this->entity::hasField($field))
+            $this->field = $field;
+        else
+            throw new Exception("La champ $field n'existe pas dans la table $this->entity.");
+    }
+
+    public function getValue(): mixed
+    {
+        return $this->value;
+    }
+
+    public function setValue(mixed $value): void
+    {
+        if(is_array($value))
             $this->list = true;
-            $this->wherevalue = array_values($wherevalue);
-        }else{
-            $this->wherevalue = $wherevalue;
-        }
+        else
+            $this->list = false;
+        $this->value = $value;
     }
 
-    /**
-     * @param string $wherefield
-     * @return bool
-     */
-    public function setWherefield(string $wherefield): bool
+    public function invertEqual(): bool
     {
-
-        if(!empty($this->class) && $this->class->inFields($wherefield)){
-            $this->wherefield = $wherefield;
-            return true;
-        }
-        return false;
+        $this->equal = !$this->equal;
+        return $this->equal;
     }
 
-    /***
-     * Si different est à true. Alors le where sera "Where Field != Value"
-     * Valeur par défaut = False
-     * @param bool $different
-     */
-    public function setDifferent(bool $different): void
+    public function invertLike(): bool
     {
-        $this->different = $different;
+        $this->like = !$this->like;
+        return $this->like;
     }
 
-    public function setLike(bool $like): bool
-    {
-        if(is_string($this->wherevalue)){
-            $this->like = true;
-            return true;
-        }
-        return false;
-    }
+    public function getQuery(): string{
+        if(!$this->ready2Use())
+            throw new Exception("Toutes les valeurs nécessaires n'ont pas été rempli.");
 
-    public function setSalt(string $salt): bool{
-        $tmp = preg_replace('/[^a-zA-Z0-9]/', '', $salt);
-        if (!empty($tmp)) {
-            $this->salt = $tmp;
-            return true;
-        }
-        return false;
-    }
-
-    public function ready2Use(): bool{
-        if(!empty($this->wherevalue) && !empty($this->wherefield)){
-            return true;
-        }
-        return false;
-    }
-
-    public function getWhere(bool $alone = true): string{
-        if($alone){
-            $where =  " WHERE ";
-        }else{
-            $where = " ";
-        }
-        $where .= $this->table . "." . $this->wherefield;
+        $query = $this->getEntity() . "." . $this->field . " ";
 
         if($this->list){
-            if ($this->different){
-                $where .= " NOT IN (";
-            }else{
-                $where .= " IN (";
-            }
+            if ($this->equal)
+                $query .= " IN (";
+            else
+                $query .= " NOT IN (";
 
-            foreach ($this->wherevalue as $key=> $value){
-                $where .= ":" . $this->wherefield . $key;
-                if($key != array_key_last($this->wherevalue)){
-                    $where .= ", ";
+            foreach ($this->value as $key=> $value){
+                $query .= ":" . $this->field . $key;
+                if($key != array_key_last($this->value)){
+                    $query .= ", ";
                 }
             }
-            return $where . ")";
+            return $query . ")";
         }elseif ($this->like){
-            if ($this->different){
-                $where .= " NOT LIKE ";
-            }else{
-                $where .= " LIKE ";
-            }
-            return $where . ":" . $this->wherefield . $this->salt;
+            if ($this->equal)
+                $query .= " LIKE ";
+            else
+                $query .= " NOT LIKE ";
+
+            return $query . ":" . $this->field . $this->salt;
         }else {
-            if ($this->different){
-                $where .= " != ";
+            if ($this->equal){
+                $query .= " = ";
             }else{
-                $where .= " = ";
+                $query .= " != ";
             }
-            return $where . ":" . $this->wherefield . $this->salt;
+            return $query . ":" . $this->field . $this->salt;
         }
 
     }
 
     public function doBindValue(\PDOStatement $pdo):void{
         if($this->list){
-            foreach ($this->wherevalue as $key => $value){
-                $pdo->bindValue(":" . $this->wherefield . $key, $value);
+            foreach ($this->value as $key => $value){
+                $pdo->bindValue(":" . $this->field . $key, $value);
             }
         }elseif($this->like){
-            $pdo->bindValue(":" . $this->wherefield . $this->salt, '%' . $this->wherevalue . '%' );
+            $pdo->bindValue(":" . $this->field . $this->salt, '%' . $this->value . '%' );
         }
         else{
-            $pdo->bindValue(":" . $this->wherefield . $this->salt, $this->wherevalue);
+            $pdo->bindValue(":" . $this->field . $this->salt, $this->value);
         }
+    }
+
+    public function reset():void
+    {
+        unset($this->entity);
+        unset($this->field);
+        unset($this->value);
+        unset($this->list);
+        $this->like = false;
+        $this->equal = true;
+        $this->salt = bin2hex(random_bytes(16));
     }
 
 }

@@ -10,6 +10,14 @@ class Join
     private EntityRepository $entityFrom;
     private EntityRepository $entityTo;
 
+    private function hasEntityFrom():bool {
+        return !empty($this->entityFrom);
+    }
+
+    private function hasEntityTo():bool {
+        return !empty($this->entityTo);
+    }
+
     //region getter and Setter
     public function getEntityFrom(): string
     {
@@ -36,26 +44,17 @@ class Join
     {
         return $this->entityTo::getName();
     }
-
     public function setEntityTo(string $entity): void
     {
         $this->reset();
         if (EntityRepository::doEntityExist($entity)) {
             $entityRepository = $entity . "Repository";
             $this->entityTo = new $entityRepository();
-        } else {
+        } else
             throw new Exception("La table $entity n'existe pas.");
-        }
+
     }
     //endregion
-
-    private function hasEntityFrom():bool {
-        return !empty($this->entityFrom);
-    }
-
-    private function hasEntityTo():bool {
-        return !empty($this->entityTo);
-    }
 
     public function getQuery(array &$entityAvailable):string {
         if (!$this->hasEntityTo())

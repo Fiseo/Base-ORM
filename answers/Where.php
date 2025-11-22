@@ -92,15 +92,15 @@ class Where
 
     public function getQuery(): string{
         if(!$this->ready2Use())
-            throw new Exception("Toutes les valeurs nécessaires n'ont pas été rempli.");
+            throw new Exception("Toutes les valeurs nécessaires n'ont pas été défini.");
 
         $query = $this->getEntity() . "." . $this->field . " ";
 
         if($this->list){
             if ($this->equal)
-                $query .= " IN (";
+                $query .= "IN (";
             else
-                $query .= " NOT IN (";
+                $query .= "NOT IN (";
 
             foreach ($this->value as $key=> $value){
                 $query .= ":" . $this->field . $key;
@@ -111,16 +111,16 @@ class Where
             return $query . ")";
         }elseif ($this->like){
             if ($this->equal)
-                $query .= " LIKE ";
+                $query .= "LIKE ";
             else
-                $query .= " NOT LIKE ";
+                $query .= "NOT LIKE ";
 
             return $query . ":" . $this->field . $this->salt;
         }else {
             if ($this->equal){
-                $query .= " = ";
+                $query .= "= ";
             }else{
-                $query .= " != ";
+                $query .= "!= ";
             }
             return $query . ":" . $this->field . $this->salt;
         }

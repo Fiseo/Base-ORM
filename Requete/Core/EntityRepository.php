@@ -117,7 +117,7 @@ namespace Requete\Core {
         }
 
         private function getQueryDelete(): string{
-            return "DELETE FROM " . static::$entity;
+            return "DELETE FROM " . static::$entity . " ";
         }
 
         private function getQuerySelect(array|string $fields): string{
@@ -125,12 +125,10 @@ namespace Requete\Core {
             $query = "SELECT ";
             foreach ($fields as $key => $field) {
 
-                $query = $query . $field;
-
-                if ($key != array_key_last($fields)) {
-                    $query = $query . ", ";
-                } else {
-                    $query = $query . " FROM " . self::$entity;
+                    if ($entity == array_key_last($allFields) && $key == array_key_last($fields))
+                        $query = $query . " FROM " . static::$entity;
+                    else
+                        $query = $query . ", ";
                 }
             }
             return $query;

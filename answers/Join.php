@@ -31,7 +31,7 @@ class Join
 
         if (EntityRepository::doEntityExist($entity)) {
             if($this->entityTo::isLinked($entity)) {
-                $entityRepository = $entity . "Repository";
+                $entityRepository = "\\Requete\\" . $entity . "Repository";
                 $this->entityFrom = new $entityRepository();
             } else
                 throw new Exception("La table " . $entity . " n'est pas liée à la table " . $this->getEntityTo() . ".");

@@ -48,7 +48,7 @@ class Join
     {
         $this->reset();
         if (EntityRepository::doEntityExist($entity)) {
-            $entityRepository = $entity . "Repository";
+            $entityRepository = "\\Requete\\" . $entity . "Repository";
             $this->entityTo = new $entityRepository();
         } else
             throw new Exception("La table $entity n'existe pas.");
@@ -56,27 +56,29 @@ class Join
     }
     //endregion
 
-    public function getQuery(array &$entityAvailable):string {
+    public function verify(array &$entityAvailable):void {
         if (!$this->hasEntityTo())
             throw new Exception("La table à rejoindre n'a pas été renseigné.");
 
         if ($this->hasEntityFrom()) {
-            $valid = true;
+            $notValid = true;
             foreach ($entityAvailable as $entity) {
-                if ($entity()::getName() == $this->getEntityFrom()) {
-                    $valid = false;
+                $entityRepository = "\\Requete\\" . $entity . "Repository";
+                if ($entityRepository::getName() == $this->getEntityFrom()) {
+                    $notValid = false;
                     break;
                 }
             }
 
-            if (!$valid)
+            if ($notValid)
                 throw new Exception("La table de départ n'est pas disponible.");
         }
 
         if (!$this->hasEntityFrom()) {
             foreach ($entityAvailable as $entity) {
-                if ($entity()::isLinked($this->getEntityTo())) {
-                    $this->setEntityFrom($entity::getName());
+                $entityRepository = "\\Requete\\" . $entity . "Repository";
+                if ($entityRepository::isLinked($this->getEntityTo())) {
+                    $this->setEntityFrom($entityRepository::getName());
                     break;
                 }
             }
@@ -86,19 +88,20 @@ class Join
             throw new Exception("La table " . $this->getEntityTo() . " est injoignable.");
 
         $entityAvailable[] = $this->getEntityTo();
-
+    }
+    public function getQuery():string {
         $field1 = $this->entityFrom::getLink($this->getEntityTo());
         $field2 = $this->entityTo::getLink($this->getEntityFrom());
 
         if ($field1[array_key_first($field1)] == null)
-            $field1[array_key_first($field1)] = "id";
+            $field1[array_key_first($field1)] = "Id";
         if ($field2[array_key_first($field2)] == null)
-            $field2[array_key_first($field2)] = "id";
+            $field2[array_key_first($field2)] = "Id";
 
         return  "INNER JOIN " . $this->getEntityTo()
-                . " ON " . array_key_first($field1) . "." . $field1[array_key_first($field1)]
+                . " ON " . $this->getEntityFrom() . "." . $field1[array_key_first($field1)]
                 . " = "
-                . array_key_first($field2) . "." . $field2[array_key_first($field2)];
+                . $this->getEntityTo() . "." . $field2[array_key_first($field2)];
     }
 
     public function reset(): void

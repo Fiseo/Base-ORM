@@ -67,12 +67,29 @@ namespace Requete\Core {
             }
         }
 
-        private function verifyFields(array $fields):void {
-            foreach ($fields as $field) {
-                if(!self::hasField($field)) {
-                    throw new Exception("Field '$field' does not exist");
+        private function verifyFields(array $allFields, array $entityAvailable):void {
+            foreach ($allFields as $entity => $fields) {
+                if(!static::doEntityExist($entity))
+                    throw new Exception("Entity '$entity' does not exist");
+
+                if(!in_array($entity, $entityAvailable))
+                    throw new Exception("Entity '$entity' is not available in the current context");
+
+                $entityRepository = "\\Requete\\".$entity."Repository";
+                foreach ($fields as $field) {
+                    if(!(new $entityRepository())::hasField($field))
+                        throw new Exception("Field '$field' does not exist in entity '$entity'");
                 }
             }
+        }
+
+        private function verifyJoins(array|Join $joins, array &$entityAvailable):void {
+            if (is_array($joins)) {
+                foreach ($joins as $join) {
+                    $join->verify($entityAvailable);
+                }
+            } else
+                $joins->verify($entityAvailable);
         }
 
         private function getQueryInsert(array $values): string{
@@ -120,10 +137,11 @@ namespace Requete\Core {
             return "DELETE FROM " . static::$entity . " ";
         }
 
-        private function getQuerySelect(array|string $fields): string{
-            if (is_string($fields)) { $fields = [$fields]; }
+        private function getQuerySelect(array $allFields): string{
             $query = "SELECT ";
-            foreach ($fields as $key => $field) {
+            foreach ($allFields as $entity => $fields) {
+                foreach ($fields as $key => $field) {
+                    $query .= $entity . "." . $field;
 
                     if ($entity == array_key_last($allFields) && $key == array_key_last($fields))
                         $query = $query . " FROM " . static::$entity;
@@ -150,17 +168,14 @@ namespace Requete\Core {
             return $query;
         }
 
-        private function getQueryJoin(array|Join $joins, array $entityAvailable):string{
+        private function getQueryJoin(array|Join $joins):string{
             $query = " ";
             if (is_array($joins)) {
-                foreach ($joins as $key => $join) {
-                    $query = $join->getQuery($entityAvailable);
-                    if ($key != array_key_last($joins)) {
-                        $query .= " ";
-                    }
+                foreach ($joins as $join) {
+                    $query .= $join->getQuery() . " ";
                 }
             } else {
-                $query = " " . $joins->getQuery($entityAvailable) . " ";
+                $query .= $joins->getQuery() . " ";
             }
             return $query;
         }
@@ -209,10 +224,12 @@ namespace Requete\Core {
             $statement->execute();
         }
 
-        public function select(array|string $fields,array|Join|null $joins = null, array|Where|null $wheres = null):array {
-            $this->verifyFields($fields);
+        public function select(array $fields,array|Join|null $joins = null, array|Where|null $wheres = null):array {
+            $entityAvailable = [static::getName()];
+            if(!empty($joins)) {$this->verifyJoins($joins, $entityAvailable);}
+            $this->verifyFields($fields, $entityAvailable);
             $sql = $this->getQuerySelect($fields);
-            if(!empty($joins)) {$sql .= $this->getQueryJoin($joins, [self::getName()]);}
+            if(!empty($joins)) {$sql .= $this->getQueryJoin($joins);}
             if(!empty($wheres)) {$sql .= $this->getQueryWhere($wheres);}
             $statement = (new LoginServer())->getPDO()->prepare($sql);
             if (!empty($wheres)) {$this->bindWhereValues($statement, $wheres);}

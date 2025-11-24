@@ -10,7 +10,6 @@ namespace Requete\Core {
 
     abstract class EntityRepository
     {
-        const ID = "id";
         protected static array $fields;
         protected static string $entity;
         protected static array $entitylinked;
@@ -24,19 +23,19 @@ namespace Requete\Core {
         }
 
         static public function hasField(string $field):bool {
-            if (in_array($field, self::$fields)) {
+            if (in_array($field, static::$fields)) {
                 return true;
             }
             return false;
         }
 
         static public function getName(): string{
-            return self::$entity;
+            return static::$entity;
         }
 
         static public function isLinked(string $entity):bool {
             $entityLinked = [];
-            foreach (self::$entitylinked as $linkedEntity => $field) {
+            foreach (static::$entitylinked as $linkedEntity => $field) {
                 $entityLinked[] = $linkedEntity;
             }
             if (in_array($entity, $entityLinked)) {
@@ -47,7 +46,7 @@ namespace Requete\Core {
 
         static public function getLink(string $entity):array {
             $result = [];
-            foreach (self::$entitylinked as $linkedEntity => $field) {
+            foreach (static::$entitylinked as $linkedEntity => $field) {
                 if ($linkedEntity == $entity) {
                     $result[$linkedEntity] = $field;
                     break;
@@ -62,7 +61,7 @@ namespace Requete\Core {
 
         private function verifyValues(array $values):void {
             foreach ($values as $field => $value) {
-                if(!self::hasField($field)) {
+                if(!static::hasField($field)) {
                     throw new Exception("Field '$field' does not exist");
                 }
             }
@@ -78,7 +77,7 @@ namespace Requete\Core {
 
         private function getQueryInsert(array $values): string{
 
-            $query = "INSERT INTO " . self::$entity . " (";
+            $query = "INSERT INTO " . static::$entity . " (";
 
             foreach ($values as $field => $value) {
                 $query .= $field;
@@ -103,20 +102,22 @@ namespace Requete\Core {
 
         private function getQueryUpdate(array $values): string{
 
-            $query =   "UPDATE " . self::$entity . " SET ";
+            $query =   "UPDATE " . static::$entity . " SET ";
 
             foreach ($values as $field => $value) {
                 $query .= $field . " = :" . $field;
 
-                if ($field != array_key_last($values)) {
+                if ($field != array_key_last($values))
                     $query .= ", ";
-                }
+                else
+                    $query .= " ";
+
             }
             return $query;
         }
 
         private function getQueryDelete(): string{
-            return "DELETE FROM " . self::$entity;
+            return "DELETE FROM " . static::$entity;
         }
 
         private function getQuerySelect(array|string $fields): string{

@@ -36,7 +36,7 @@ class Where
     {
         $this->reset();
         if (EntityRepository::doEntityExist($entity)) {
-            $entityRepository = $entity . "Repository";
+            $entityRepository = "\\Requete\\" . $entity . "Repository";
             $this->entity = new $entityRepository();
         } else {
             throw new Exception("La table $entity n'existe pas.");
@@ -55,7 +55,7 @@ class Where
 
     public function setField(string $field): void
     {
-        if($this->hasEntity())
+        if(!$this->hasEntity())
             throw new Exception("La table n'a pas été défini.");
 
         if($this->entity::hasField($field))

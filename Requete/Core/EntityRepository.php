@@ -210,7 +210,7 @@ namespace Requete\Core {
             $statement->execute();
         }
 
-        public function select(array|string $fields,array|Join|null $joins, array|Where|null $wheres):array {
+        public function select(array|string $fields,array|Join|null $joins = null, array|Where|null $wheres = null):array {
             $this->verifyFields($fields);
             $sql = $this->getQuerySelect($fields);
             if(!empty($joins)) {$sql .= $this->getQueryJoin($joins, [self::getName()]);}

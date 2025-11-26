@@ -51,6 +51,10 @@ foreach ($table in $data.Keys) {
 
     $filePath = Join-Path $outputDir "$className.php"
 
+    if (Test-Path $filePath) {
+        Remove-Item $filePath
+    }
+
     # Début du fichier
     $php = "<?php`n`n"
     $php += "namespace Requete;`n`n"
@@ -87,4 +91,23 @@ foreach ($table in $data.Keys) {
     Set-Content -Path $filePath -Value $php -Encoding UTF8
 }
 
-Write-Host "Classes PHP générées dans : $outputDir"
+$phpPath = "Requete\Core\listTable.php"
+
+# Supprimer le fichier s'il existe
+if (Test-Path $phpPath) {
+    Remove-Item $phpPath
+}
+
+$tables = $data.Keys
+
+# Construire le contenu PHP
+$phpContent  = "<?php`n`n"
+$phpContent += "return [" + "`n"
+
+foreach ($table in $tables) {
+    $phpContent += "    '$table'," + "`n"
+}
+
+$phpContent += "];`n"
+
+Set-Content -Path $phpPath -Value $phpContent -Encoding UTF8

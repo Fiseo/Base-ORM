@@ -15,8 +15,7 @@ namespace Requete\Core {
         protected static array $entitylinked;
 
         static public function doEntityExist(string $entity):bool {
-            $entities = [];
-            if (in_array($entity, $entities)) {
+            if (in_array($entity, include "listTable.php")) {
                 return true;
             }
             return false;

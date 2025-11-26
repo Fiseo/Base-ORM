@@ -1,4 +1,4 @@
-$path = "C:\wamp64\www\Base-ORM-Framework\file.sql"
+$path = "C:\wamp64\www\Base-ORM-Framework\Exemple.sql"
 
 $data = @{}
 $currentTable = $null

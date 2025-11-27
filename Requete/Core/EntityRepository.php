@@ -114,7 +114,6 @@ namespace Requete\Core {
             }
 
             return $query;
-            //commentaire
         }
 
         private function getQueryUpdate(array $values): string{
